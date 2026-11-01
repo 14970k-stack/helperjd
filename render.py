@@ -65,7 +65,7 @@ def card(i, heading, title, narration):
     d.rounded_rectangle((830,1675,965,1755), radius=18, fill='#e1be83')
     d.text((851,1685), '지수', font=font(42), fill='#10263d')
     if i == len(CARDS)-1:
-        d.text((75,1790), '대전 유성구 계룡로105번길 15, 403호', font=font(30), fill='white')
+        d.text((75,1790), '대전광역시 유성구 계룡로105번길 15, 403호', font=font(28), fill='white')
     Image.alpha_composite(im.convert('RGBA'), overlay).convert('RGB').save(OUT/f'card-{i}.png')
 
 
