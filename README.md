@@ -1,20 +1,19 @@
 # 지수행정사 SNS 자동 제작
 
-## 현재 제작 경로
-1. ChatGPT 자동 작업은 Asia/Seoul 오전 05:00 시작.
-2. 새로운 9:16 만화 6장면을 2열 3행 atlas로 생성. 각 장면은 9:16이며 고정 캐릭터·가상 사례로 구성.
-3. atlas JPEG bytes를 base64로 인코딩해 assets/storyboard.b64에 저장. 원본 이미지를 수정하지 않고 영상 장면을 구성하기 위한 운반 형식.
-4. content/current.json의 batch_id·title·detail_url·scenes(heading/title/narration)를 해당 원고로 갱신. assets 먼저, content 마지막 커밋 권장. push마다 렌더가 실행되므로 원고 최종 commit SHA와 일치하는 run만 사용.
-5. GitHub Actions가 render.py를 실행하고 Repository Secrets의 Azure 키를 사용해 한국어 음성을 생성. 원본 합성 BGM을 작게 깔고 음성 동안 자동 감쇄.
-6. 동일 commit SHA의 workflow run 완료를 확인하고 artifact를 가져와 MP4 프레임·음성·길이 검증.
-7. Metricool로 오전 06:30 영상, 오후 15:30 별도 이미지 게시물 등록. 댓글/첫 답글에 주제별 정상 접근 가능한 상세 URL을 넣고 게시 상태 확인.
+## 제작과 검수
+1. 당일 주제와 실제로 정상 접근 가능한 관련 상세 페이지를 확인한다.
+2. 새로운 9:16 세로 만화 6장면을 고정 캐릭터의 가상 이야기로 제작한다. assets/storyboard.b64에 JPEG 운반 형식을 저장하고 content/current.json에 당일 원고를 반영한다.
+3. GitHub Actions는 저장소의 비밀 설정을 사용해 한국어 나레이션을 합성한다. 키 값이나 원본 음원은 공개 저장소에 넣지 않는다.
+4. 원고의 최종 commit SHA와 동일한 실행의 artifact를 가져온다. 나레이션 전용 파일은 바로 게시하지 않는다.
+5. 사용자가 제공한 음악을 비공개 보관 파일에서 가져와 로컬에서 최종 합성한다. 작은 배경음·음성 중 감쇄·시작과 끝 페이드를 적용한다.
+6. 최종 MP4의 한글 자막·잘림·길이·음성을 확인하고 별도 오후 안내 이미지를 제작한다.
 
-## Secret
-AZURE_SPEECH_KEY, AZURE_SPEECH_REGION. 키를 출력·복사·원고에 포함하지 않음.
+## 발행
+- 오전 06:30: Facebook Reels, Instagram Reels, Threads 영상, 확인된 사무소 YouTube Shorts.
+- 오후 15:30: Facebook, Instagram, Threads 이미지 안내 글.
+- 상세 링크는 Facebook·Instagram·YouTube 첫 댓글, Threads 첫 답글로 등록한다.
+- 연결 계정은 실행 시 Metricool 설정과 사용자의 승인된 채널 목록으로 확인한다. 계정 내부 ID나 도구 응답 원문을 이 공개 저장소에 기록하지 않는다.
+- 등록 성공과 실제 발행 완료를 구분한다. 첫 댓글 성공 여부도 별도 확인하고 본문을 중복 등록하지 않는다.
 
-## 게시 채널
-Facebook 페이지 434527969745416 / Instagram 및 Threads helperjd611 / Metricool brandId 7790650.
-YouTube는 연결된 ID만 확인됐고 채널 분야가 아직 확인되지 않아 게시 대상에 포함하지 않음.
-
-## 상태 구분
-영상 제작은 GitHub Actions, SNS 발행은 ChatGPT의 Metricool 연결이 담당. GitHub 워크플로 자체에 Metricool 자격증명이나 직접 발행 코드는 없음. ChatGPT 예약이 끝까지 실행하고 상태를 검증해야 완전한 발행 결과로 보고할 수 있음. 실패시 중복 게시하지 말 것.
+## 진행 기록
+공개 저장소에는 공개 콘텐츠와 확인된 공개 URL만 남긴다. 예약 요청 ID, 연결 정보와 상세 진행표는 비공개 작업 기록에 보관한다. 재실행 전 기존 예약과 진행표를 확인해 중복 게시를 막는다.
