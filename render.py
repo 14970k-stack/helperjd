@@ -124,11 +124,9 @@ def main():
         run(cmd)
     (OUT / 'concat.txt').write_text(''.join(f"file 'segment-{i}.mp4'\n" for i in range(len(CARDS))))
     run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', str(OUT / 'concat.txt'), '-c', 'copy', str(OUT / 'joined.mp4')])
-    music(sum(lengths))
-    # Speech ducks the pad automatically; BGM is quiet even during pauses.
-    mix = '[0:a]asplit=2[voice][side];[1:a]volume=0.18[bed];[bed][side]sidechaincompress=threshold=0.025:ratio=8:attack=20:release=500[ducked];[voice][ducked]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[out]'
-    run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(OUT / 'joined.mp4'), '-i', str(OUT / 'bgm.wav'), '-filter_complex', mix, '-map', '0:v', '-map', '[out]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', str(OUT / 'jisu-sample.mp4')])
-    (OUT / 'manifest.json').write_text(json.dumps({'sample_only': False, 'batch_id': CONTENT['batch_id'], 'detail_url': CONTENT['detail_url'], 'voice': 'ko-KR-SunHiNeural', 'has_azure_narration': not args.visual_only, 'bgm': 'original procedural synthesis', 'seconds': duration(OUT / 'jisu-sample.mp4'), 'cards': CARDS}, ensure_ascii=False, indent=2))
+    # User music is mixed privately after download; do not publish original audio assets.
+    run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(OUT / 'joined.mp4'), '-map', '0:v', '-map', '0:a', '-c', 'copy', '-movflags', '+faststart', str(OUT / 'jisu-sample.mp4')])
+    (OUT / 'manifest.json').write_text(json.dumps({'sample_only': False, 'batch_id': CONTENT['batch_id'], 'detail_url': CONTENT['detail_url'], 'voice': 'ko-KR-SunHiNeural', 'has_azure_narration': not args.visual_only, 'bgm': 'pending private user music mix; do not publish before mixing', 'seconds': duration(OUT / 'jisu-sample.mp4'), 'cards': CARDS}, ensure_ascii=False, indent=2))
     print('Rendered jisu-sample.mp4; no social post was created.')
 
 if __name__ == '__main__':
