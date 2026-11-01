@@ -59,7 +59,7 @@ def card(i, heading, title, narration):
             line = trial
     if line:
         lines.append(line)
-    d.multiline_text((75,1410), '\\n'.join(lines), font=font(40), fill='white', spacing=17)
+    d.multiline_text((75,1410), '\n'.join(lines), font=font(40), fill='white', spacing=17)
     d.text((75,1660), '지수행정사사무소', font=font(38), fill='#e1be83')
     d.text((75,1720), '0507-1333-4475', font=font(45), fill='white')
     d.rounded_rectangle((830,1675,965,1755), radius=18, fill='#e1be83')
@@ -76,7 +76,7 @@ def speak(i, text):
         raise SystemExit('Missing AZURE_SPEECH_KEY or AZURE_SPEECH_REGION repository secret.')
     if not re.fullmatch('[a-z0-9-]+', region):
         raise SystemExit('AZURE_SPEECH_REGION must be a region code such as koreacentral.')
-    ssml = '<speak version="1.0" xml:lang="ko-KR"><voice name="ko-KR-SunHiNeural"><prosody rate="+5%">' + escape(text) + '</prosody></voice></speak>'
+    ssml = '<speak version="1.0" xml:lang="ko-KR"><voice name="ko-KR-SunHiNeural"><prosody rate="+15%">' + escape(text) + '</prosody></voice></speak>'
     req = urllib.request.Request(f'https://{region}.tts.speech.microsoft.com/cognitiveservices/v1', data=ssml.encode(), headers={'Ocp-Apim-Subscription-Key': key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3', 'User-Agent': 'jisu-sns-renderer'})
     try:
         with urllib.request.urlopen(req, timeout=60) as response:
