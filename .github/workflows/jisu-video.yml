@@ -1,0 +1,170 @@
+name: Jisu voice and video test
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/jisu-video.yml'
+permissions:
+  contents: read
+concurrency:
+  group: jisu-video-test
+  cancel-in-progress: false
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install renderer dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-noto-cjk python3-pil
+      - name: Render narrated sample with background music
+        env:
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+        run: |
+          cat > render.py <<'PY'
+          """Generate a captioned Korean sample with Azure narration and original procedural BGM."""
+          import argparse
+          import json
+          import math
+          import os
+          from pathlib import Path
+          import re
+          import struct
+          import subprocess
+          import urllib.error
+          import urllib.request
+          import wave
+          from xml.sax.saxutils import escape
+          
+          from PIL import Image, ImageDraw, ImageFont
+          
+          OUT = Path('output')
+          CARDS = [
+              ('행정처분 통지서', '받으셨다면\n먼저 확인하세요', '행정처분 통지서를 받으셨나요? 먼저 문서의 종류와 날짜를 확인하세요.'),
+              ('첫 번째 확인', '처분 내용과\n안내된 기한', '사전통지인지 최종 처분인지 살펴보고, 문서에 안내된 제출 기한을 확인하세요.'),
+              ('두 번째 준비', '사실관계와\n관련 자료 정리', '통지서와 관련 자료를 모아 사실관계를 정리하세요. 대응 방법은 개별 사정에 따라 달라집니다.'),
+              ('지수행정사사무소', '통지서를 준비해\n상담받아 보세요', '지수행정사사무소입니다. 통지서를 준비해 상담받아 보세요.'),
+          ]
+          
+          def run(args):
+              subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+          
+          def duration(path):
+              return float(subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', str(path)], text=True))
+          
+          def font(size):
+              candidates = [Path(os.environ.get('KOREAN_FONT', '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'))]
+              candidates += list(Path('/usr/share/fonts').rglob('*CJK*Regular*'))
+              for path in candidates:
+                  if path.is_file():
+                      return ImageFont.truetype(str(path), size)
+              raise SystemExit('Korean font not found. Install fonts-noto-cjk.')
+          
+          def card(i, heading, title, narration):
+              im = Image.new('RGB', (1080, 1920), '#10263d')
+              d = ImageDraw.Draw(im)
+              gold, white = '#e1be83', '#fffaf0'
+              d.line((90, 210, 990, 210), fill=gold, width=3)
+              d.text((90, 130), '지수행정사사무소', font=font(43), fill=white)
+              d.text((90, 310), heading, font=font(48), fill=gold)
+              d.multiline_text((85, 470), title, font=font(78), fill=white, spacing=30)
+              # Captions reproduce the spoken wording and stay inside a fixed safe area.
+              words = narration.split()
+              lines, line = [], ''
+              for word in words:
+                  trial = (line + ' ' + word).strip()
+                  if d.textbbox((0, 0), trial, font=font(44))[2] > 900:
+                      lines.append(line)
+                      line = word
+                  else:
+                      line = trial
+              if line:
+                  lines.append(line)
+              d.multiline_text((90, 1000), '\n'.join(lines), font=font(44), fill=white, spacing=20)
+              d.line((90, 1450, 990, 1450), fill=gold, width=3)
+              d.text((90, 1510), '상담 0507-1333-4475', font=font(57), fill=gold)
+              d.text((90, 1610), '대전광역시 유성구', font=font(38), fill=white)
+              d.text((90, 1670), '계룡로105번길 15, 403호', font=font(38), fill=white)
+              d.text((930, 1770), f'{i + 1}/4', font=font(33), fill=gold)
+              im.save(OUT / f'card-{i}.png')
+          
+          def speak(i, text):
+              key = os.environ.get('AZURE_SPEECH_KEY', '').strip()
+              region = os.environ.get('AZURE_SPEECH_REGION', '').strip()
+              if not key or not region:
+                  raise SystemExit('Missing AZURE_SPEECH_KEY or AZURE_SPEECH_REGION repository secret.')
+              if not re.fullmatch('[a-z0-9-]+', region):
+                  raise SystemExit('AZURE_SPEECH_REGION must be a region code such as koreacentral.')
+              ssml = '<speak version="1.0" xml:lang="ko-KR"><voice name="ko-KR-SunHiNeural"><prosody rate="+5%">' + escape(text) + '</prosody></voice></speak>'
+              req = urllib.request.Request(f'https://{region}.tts.speech.microsoft.com/cognitiveservices/v1', data=ssml.encode(), headers={'Ocp-Apim-Subscription-Key': key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3', 'User-Agent': 'jisu-sns-renderer'})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as response:
+                      data = response.read()
+              except urllib.error.HTTPError as e:
+                  # Do not print request headers, response bodies or secrets.
+                  raise SystemExit(f'Azure Speech returned HTTP {e.code}. Check region, key and free-tier quota.') from None
+              if len(data) < 100:
+                  raise SystemExit('Azure returned an empty audio file.')
+              path = OUT / f'voice-{i}.mp3'
+              path.write_bytes(data)
+              return path
+          
+          def music(seconds):
+              # Original synthesized pad: no third-party music, samples or melodies.
+              sr = 24000
+              chords = [(130.81, 164.81, 196.0), (110.0, 130.81, 164.81), (87.31, 110.0, 130.81), (98.0, 123.47, 146.83)]
+              with wave.open(str(OUT / 'bgm.wav'), 'wb') as w:
+                  w.setparams((1, 2, sr, 0, 'NONE', 'not compressed'))
+                  for start in range(0, math.ceil(seconds * sr), sr):
+                      samples = bytearray()
+                      for j in range(min(sr, math.ceil(seconds * sr) - start)):
+                          t = (start + j) / sr
+                          local = t % 6
+                          envelope = min(local / .7, 1, (6 - local) / .8)
+                          fade = max(0, min(t / 1.2, 1, (seconds - t) / 1.5))
+                          value = sum(math.sin(2 * math.pi * hz * t) + .15 * math.sin(4 * math.pi * hz * t) for hz in chords[int(t / 6) % 4]) / 3
+                          samples.extend(struct.pack('<h', int(4800 * envelope * fade * value)))
+                      w.writeframes(samples)
+          
+          def main():
+              p = argparse.ArgumentParser()
+              p.add_argument('--visual-only', action='store_true', help='Local rendering check; no Azure calls')
+              args = p.parse_args()
+              OUT.mkdir(exist_ok=True)
+              lengths = []
+              for i, (heading, title, text) in enumerate(CARDS):
+                  card(i, heading, title, text)
+                  voice = None if args.visual_only else speak(i, text)
+                  seconds = 5.0 if voice is None else duration(voice) + .5
+                  lengths.append(seconds)
+                  cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-loop', '1', '-i', str(OUT / f'card-{i}.png')]
+                  cmd += ['-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono'] if voice is None else ['-i', str(voice)]
+                  cmd += ['-vf', "zoompan=z='min(zoom+0.00004,1.01)':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=1080x1920:fps=25", '-af', 'apad', '-t', str(seconds), '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '24', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '24000', str(OUT / f'segment-{i}.mp4')]
+                  run(cmd)
+              (OUT / 'concat.txt').write_text(''.join(f"file 'segment-{i}.mp4'\n" for i in range(4)))
+              run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', str(OUT / 'concat.txt'), '-c', 'copy', str(OUT / 'joined.mp4')])
+              music(sum(lengths))
+              # Speech ducks the pad automatically; BGM is quiet even during pauses.
+              mix = '[0:a]asplit=2[voice][side];[1:a]volume=0.18[bed];[bed][side]sidechaincompress=threshold=0.025:ratio=8:attack=20:release=500[ducked];[voice][ducked]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[out]'
+              run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(OUT / 'joined.mp4'), '-i', str(OUT / 'bgm.wav'), '-filter_complex', mix, '-map', '0:v', '-map', '[out]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', str(OUT / 'jisu-sample.mp4')])
+              (OUT / 'manifest.json').write_text(json.dumps({'sample_only': True, 'voice': 'ko-KR-SunHiNeural', 'has_azure_narration': not args.visual_only, 'bgm': 'original procedural synthesis', 'seconds': duration(OUT / 'jisu-sample.mp4'), 'cards': CARDS}, ensure_ascii=False, indent=2))
+              print('Rendered jisu-sample.mp4; no social post was created.')
+          
+          if __name__ == '__main__':
+              main()
+          
+          PY
+          /usr/bin/python3 render.py
+      - name: Save sample video and preview frames
+        uses: actions/upload-artifact@v4
+        with:
+          name: jisu-voice-video-sample
+          path: |
+            output/jisu-sample.mp4
+            output/card-*.png
+            output/manifest.json
+          retention-days: 7
+          if-no-files-found: error
+
