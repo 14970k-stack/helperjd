@@ -35,5 +35,44 @@
       "narration": "혼자 결론 내리지 마세요. 통지서를 준비해 지수행정사사무소에 상담받아 보세요."
     }
   ],
-  "note": "공개 콘텐츠 원고. 비공개 예약 진행표와 Metricool 현재 목록을 조회해 중복을 방지할 것."
+  "note": "공개 콘텐츠 원고. 비공개 예약 진행표와 Metricool 현재 목록을 조회해 중복을 방지할 것.",
+  "publications": [
+    {
+      "network": "facebook",
+      "url": "https://facebook.com/122228904584550532/posts/122228884064550532",
+      "content": "afternoon-image"
+    },
+    {
+      "network": "instagram",
+      "url": "https://www.instagram.com/p/DfOqwhCFVMn/",
+      "content": "afternoon-image"
+    },
+    {
+      "network": "threads",
+      "url": "https://www.threads.com/@helperjd611/post/DfOquhZiDVH",
+      "content": "afternoon-image"
+    },
+    {
+      "network": "facebook",
+      "url": "https://facebook.com/reel/2201882981213155",
+      "content": "morning-video"
+    },
+    {
+      "network": "instagram",
+      "url": "https://www.instagram.com/reel/DfNtA4ej6iU/",
+      "content": "morning-video"
+    },
+    {
+      "network": "threads",
+      "url": "https://www.threads.com/@helperjd611/post/DfNs8ZfDvgP",
+      "content": "morning-video"
+    },
+    {
+      "network": "youtube",
+      "url": "https://www.youtube.com/shorts/TgdZTAn1sIA",
+      "content": "morning-video"
+    }
+  ],
+  "threads_link_replies_published": true,
+  "other_first_comments_visibility": "미확인"
 }
